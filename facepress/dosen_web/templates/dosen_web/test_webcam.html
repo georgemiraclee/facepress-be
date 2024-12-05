@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Webcam</title>
+    <style>
+        video {
+            border: 1px solid black;
+            width: 640px;
+            height: 480px;
+        }
+        canvas {
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Real-time Face Recognition</h1>
+    <video id="video" autoplay></video>
+    <canvas id="canvas"></canvas>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const setupCamera = async () => {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: true
+            });
+            video.srcObject = stream;
+
+            return new Promise((resolve) => {
+                video.onloadedmetadata = () => {
+                    resolve(video);
+                };
+            });
+        };
+
+        const loadModel = async () => {
+            return await blazeface.load();
+        };
+
+        const detectFaces = async (model) => {
+            const predictions = await model.estimateFaces(video, false);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            predictions.forEach(prediction => {
+                const [x, y, width, height] = prediction.topLeft.concat(prediction.bottomRight).map(coord => Math.round(coord));
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x, y, width - x, height - y);
+
+                // Display name (you can replace "Mahasiswa" with the actual name)
+                ctx.fillStyle = 'red';
+                ctx.font = '20px Arial';
+                ctx.fillText('Mahasiswa', x, y > 10 ? y - 10 : 10);
+            });
+
+            requestAnimationFrame(() => detectFaces(model));
+        };
+
+        (async () => {
+            await setupCamera();
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const model = await loadModel();
+            detectFaces(model);
+        })();
+    </script>
+</body>
+</html>
